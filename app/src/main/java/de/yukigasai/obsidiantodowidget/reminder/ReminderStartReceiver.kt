@@ -4,7 +4,7 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.TaskStackBuilder
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -39,7 +39,10 @@ object ReminderStartReceiver : SimpleReceiver {
 
         val gson = Gson()
 
-        val config = WidgetConfig.loadFromPrefs(context)
+        val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        if (appWidgetId !in WidgetConfig.getWidgetIds(context)) return
+        val configJson = intent.getStringExtra(ExtrasConstants.NOTIFICATION_CONFIG) ?: return
+        val config = gson.fromJson(configJson, WidgetConfig::class.java)
 
         val title = intent.getStringExtra(ExtrasConstants.NOTIFICATION_TITLE)
         val desc = intent.getStringExtra(ExtrasConstants.NOTIFICATION_MESSAGE)
@@ -49,7 +52,10 @@ object ReminderStartReceiver : SimpleReceiver {
         // CREATE CALLBACK FOR CHECK OPTION
         val checkIntent = Intent(context, TodoWidgetReceiver::class.java)
         checkIntent.action = ActionsConstants.END_NOTIFICATION_CHECK
+        checkIntent.data = intent.data
         checkIntent.putExtra(ExtrasConstants.NOTIFICATION_TODO, gson.toJson(todo))
+        checkIntent.putExtra(ExtrasConstants.NOTIFICATION_CONFIG, configJson)
+        checkIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
 
         val checkPendingIntent = PendingIntent.getBroadcast(context, 0, checkIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
@@ -58,16 +64,10 @@ object ReminderStartReceiver : SimpleReceiver {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
 
-        // Create the TaskStackBuilder
-        val openPendingIntent: PendingIntent? = TaskStackBuilder.create(context
-        ).run {
-            // Add the intent, which inflates the back stack
-            addNextIntentWithParentStack(openIntent)
-            // Get the PendingIntent containing the entire back stack
-            NotificationManagerCompat.from(context).cancel(null, todo.name.hashCode())
-            getPendingIntent(0,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        }
+        val openPendingIntent = PendingIntent.getActivity(
+            context, appWidgetId, openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         // Create a notification channel needed for Android O and above
         val channelId = ChannelConstants.ID
@@ -90,6 +90,6 @@ object ReminderStartReceiver : SimpleReceiver {
         // Register the channel with the notification manager
         notificationManager.createNotificationChannel(notificationChannel)
         // Send the notification with a unique id
-        notificationManager.notify(todo.name.hashCode(), builder.build())
+        notificationManager.notify("widget:$appWidgetId", todo.id, builder.build())
     }
 }

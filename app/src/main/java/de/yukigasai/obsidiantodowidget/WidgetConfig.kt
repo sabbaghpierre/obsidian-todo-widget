@@ -1,6 +1,9 @@
 package de.yukigasai.obsidiantodowidget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.util.PreferencesConstants
@@ -18,12 +21,51 @@ data class WidgetConfig(
 ) {
 
     companion object {
-        fun loadFromPrefs(context: Context): WidgetConfig {
-            val gson = Gson()
-            val defaultConfig = WidgetConfig()
-            val configAsJson = context.getSharedPreferences(PreferencesConstants.WIDGET_CONFIG, 0)
-                .getString(PreferencesConstants.PREFIX, gson.toJson(defaultConfig))
-            return gson.fromJson(configAsJson, WidgetConfig::class.java)
+        private fun key(appWidgetId: Int) = "${PreferencesConstants.PREFIX}_$appWidgetId"
+
+        fun getWidgetIds(context: Context): IntArray =
+            AppWidgetManager.getInstance(context).getAppWidgetIds(
+                ComponentName(context, TodoWidgetReceiver::class.java)
+            )
+
+        @Synchronized
+        private fun preferences(context: Context): SharedPreferences {
+            val preferences = context.getSharedPreferences(PreferencesConstants.WIDGET_CONFIG, Context.MODE_PRIVATE)
+            val legacyConfig = preferences.getString(PreferencesConstants.PREFIX, null)
+            if (legacyConfig != null) {
+                val widgetIds = getWidgetIds(context)
+                if (widgetIds.isNotEmpty()) {
+                    preferences.edit {
+                        widgetIds.forEach { id ->
+                            if (!preferences.contains(key(id))) putString(key(id), legacyConfig)
+                        }
+                        remove(PreferencesConstants.PREFIX)
+                    }
+                }
+            }
+            return preferences
+        }
+
+        fun loadFromPrefs(context: Context, appWidgetId: Int): WidgetConfig {
+            val configAsJson = preferences(context).getString(key(appWidgetId), null)
+            return Gson().fromJson(configAsJson, WidgetConfig::class.java) ?: WidgetConfig()
+        }
+
+        fun delete(context: Context, appWidgetIds: IntArray) {
+            preferences(context).edit {
+                appWidgetIds.forEach { remove(key(it)) }
+            }
+        }
+
+        fun restore(context: Context, oldIds: IntArray, newIds: IntArray) {
+            val preferences = preferences(context)
+            val configurations = oldIds.map { preferences.getString(key(it), null) }
+            preferences.edit {
+                oldIds.forEach { remove(key(it)) }
+                newIds.forEachIndexed { index, id ->
+                    configurations[index]?.let { putString(key(id), it) }
+                }
+            }
         }
     }
 
@@ -44,24 +86,21 @@ data class WidgetConfig(
 
     fun getArticleFileName(): String {
         // Remove filename if it is entered.
-        if(fileName.endsWith(".md")) {
-            fileName = fileName.dropLast(3)
-        }
-
-        return "${fileName.checkForPatterns()}.md"
+        return "${fileName.removeSuffix(".md").checkForPatterns()}.md"
     }
 
     private fun getFolderPath(): String {
         //Make sure path is formatted right
-        if(!folder.endsWith("/")) {
-            folder = "${folder}/"
+        var folderPath = folder
+        if(!folderPath.endsWith("/")) {
+            folderPath = "${folderPath}/"
         }
 
-        if(!folder.startsWith("/")) {
-            folder = "/${folder}"
+        if(!folderPath.startsWith("/")) {
+            folderPath = "/${folderPath}"
         }
 
-        return folder.checkForPatterns()
+        return folderPath.checkForPatterns()
     }
 
     fun getFullPath(): String {
@@ -78,11 +117,11 @@ data class WidgetConfig(
         return folder.isNotBlank() && fileName.isNotBlank() && vaultName.isNotBlank()
     }
 
-    fun saveToPrefs(context: Context) {
+    fun saveToPrefs(context: Context, appWidgetId: Int) {
         val gson = Gson()
         val configAsJson = gson.toJson(this)
-        context.getSharedPreferences(PreferencesConstants.WIDGET_CONFIG, 0).edit {
-            putString(PreferencesConstants.PREFIX, configAsJson)
+        preferences(context).edit {
+            putString(key(appWidgetId), configAsJson)
         }
     }
 

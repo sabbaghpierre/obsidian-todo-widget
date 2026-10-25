@@ -9,6 +9,7 @@ object ExtrasConstants {
     const val NOTIFICATION_TITLE   = "EXTRA_NOTIFICATION_TITLE"
     const val NOTIFICATION_MESSAGE = "EXTRA_NOTIFICATION_MESSAGE"
     const val NOTIFICATION_TODO    = "EXTRA_NOTIFICATION_TODO"
+    const val NOTIFICATION_CONFIG  = "EXTRA_NOTIFICATION_CONFIG"
 }
 
 object ChannelConstants {
@@ -23,6 +24,7 @@ object KeysConstants {
 object PreferencesConstants {
     const val PREFIX = "todoWidget"
     const val WIDGET_CONFIG = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_CONFIG"
+    const val WIDGET_REMINDERS = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_REMINDERS"
 
     const val OWN_COUNTER = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_DEBUG_OWN_COUNTER"
     const val REAL_COUNTER = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_DEBUG_REAL_COUNTER"

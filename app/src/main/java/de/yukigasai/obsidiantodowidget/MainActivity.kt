@@ -127,7 +127,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updatePermissionState()
-        if (storageGranted && WidgetConfig.loadFromPrefs(this).isConfigured()) {
+        if (storageGranted) {
             sendBroadcast(
                 Intent(this, TodoWidgetReceiver::class.java)
                     .setAction(ActionsConstants.UPDATE_WIDGET)

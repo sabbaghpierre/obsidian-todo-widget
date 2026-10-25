@@ -53,7 +53,7 @@ class TodoWidgetConfigurationActivity : ComponentActivity() {
         }
         ViewCompat.requestApplyInsets(binding.root)
 
-        val config = WidgetConfig.loadFromPrefs(this)
+        val config = WidgetConfig.loadFromPrefs(this, appWidgetId)
 
         binding.etConfigVaultName.setText(config.vaultName)
         binding.etConfigFolderPath.setText(config.folder)
@@ -110,7 +110,7 @@ class TodoWidgetConfigurationActivity : ComponentActivity() {
     }
 
     private fun onWidgetContainerClicked(widgetConfig: WidgetConfig) {
-        widgetConfig.saveToPrefs(this)
+        widgetConfig.saveToPrefs(this, appWidgetId)
         // It is the responsibility of the configuration activity to update the app widget
 
         // Make sure we pass back the original appWidgetId.

@@ -1,5 +1,6 @@
 package de.yukigasai.obsidiantodowidget.reminder
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -18,8 +19,11 @@ object ReminderEndReceiver : SimpleReceiver {
             return
         }
 
-        val config = WidgetConfig.loadFromPrefs(context)
+        val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        if (appWidgetId !in WidgetConfig.getWidgetIds(context)) return
+        val configJson = intent.getStringExtra(ExtrasConstants.NOTIFICATION_CONFIG) ?: return
         val gson = Gson()
+        val config = gson.fromJson(configJson, WidgetConfig::class.java)
 
         val todo = gson.fromJson(
             intent.getStringExtra(ExtrasConstants.NOTIFICATION_TODO),
@@ -28,7 +32,7 @@ object ReminderEndReceiver : SimpleReceiver {
         todo.updateInFile(config)
         Toast.makeText(context, "Marked ${todo.name} as done.", Toast.LENGTH_SHORT).show()
 
-        NotificationManagerCompat.from(context).cancel(null, todo.name.hashCode())
+        NotificationManagerCompat.from(context).cancel("widget:$appWidgetId", todo.id)
 
     }
 }

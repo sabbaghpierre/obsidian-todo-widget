@@ -8,21 +8,20 @@ import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import androidx.core.content.ContextCompat.registerReceiver
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -40,6 +39,7 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
 import androidx.glance.currentState
@@ -56,6 +56,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
+import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.reminder.ReminderEndReceiver
 import de.yukigasai.obsidiantodowidget.reminder.ReminderRepo
 import de.yukigasai.obsidiantodowidget.reminder.ReminderStartReceiver
@@ -65,7 +66,16 @@ import de.yukigasai.obsidiantodowidget.util.ActionsConstants
 import de.yukigasai.obsidiantodowidget.util.Counter
 import de.yukigasai.obsidiantodowidget.util.KeysConstants
 import de.yukigasai.obsidiantodowidget.util.OnScreenReceiver
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+private val widgetConfigKey = stringPreferencesKey("widgetConfig")
+private val widgetTodosKey = stringPreferencesKey("widgetTodos")
+private val widgetRefreshLocks = ConcurrentHashMap<Int, Mutex>()
 
 class TodoWidget : GlanceAppWidget() {
 
@@ -93,7 +103,7 @@ class TodoWidget : GlanceAppWidget() {
 
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        refreshTodos(context, id)
+        loadWidgetState(context, id)
         provideContent { Content() }
     }
 
@@ -109,9 +119,10 @@ class TodoWidget : GlanceAppWidget() {
 
     @Composable
     fun Content() {
-        val todos by TodoRepo.currentTodos.collectAsState()
-        val context = LocalContext.current
-        val config = WidgetConfig.loadFromPrefs(context)
+        val preferences = currentState<Preferences>()
+        val gson = Gson()
+        val config = gson.fromJson(preferences[widgetConfigKey], WidgetConfig::class.java) ?: WidgetConfig()
+        val todos = gson.fromJson(preferences[widgetTodosKey], Array<TodoItem>::class.java)?.toList().orEmpty()
 
         GlanceTheme {
             Column(
@@ -248,9 +259,18 @@ class CheckboxClickAction : ActionCallback {
         parameters: ActionParameters,
     ) {
 
-        val config = WidgetConfig.loadFromPrefs(context)
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        val config = WidgetConfig.loadFromPrefs(context, appWidgetId)
         val toggledItemKey = requireNotNull(parameters[toggledItemKey])
         val checked = parameters[ToggleableStateKey]
+        val state = TodoWidget().getAppWidgetState<Preferences>(context, glanceId)
+        val todos = Gson().fromJson(state[widgetTodosKey], Array<TodoItem>::class.java).orEmpty()
+        val toggledItem = todos.getOrNull(toggledItemKey.toInt())
+        val displayedConfig = Gson().fromJson(state[widgetConfigKey], WidgetConfig::class.java)
+        if (toggledItem == null || displayedConfig != config) {
+            refreshTodos(context, glanceId)
+            return
+        }
 
         if (checked != null) {
             updateAppWidgetState(context, glanceId) { state ->
@@ -258,7 +278,6 @@ class CheckboxClickAction : ActionCallback {
             }
         }
 
-        val toggledItem = TodoRepo.currentTodos.value[toggledItemKey.toInt()]
         toggledItem.updateInFile(config)
         refreshTodos(context, glanceId)
     }
@@ -278,22 +297,30 @@ class RefreshButtonHandler : ActionCallback {
  * Force update the todo info after user click
  */
 suspend fun refreshTodos(context: Context, glanceId: GlanceId) {
-    val config = WidgetConfig.loadFromPrefs(context)
-
-    // Update the todos from the file
-    TodoRepo.updateTodos(config)
-
-    // Update the reminder from the todos
-    ReminderRepo.getInstance().update(context, TodoRepo.currentTodos.value)
-
-    updateAppWidgetState(context, glanceId) { state ->
-        for(todo in TodoRepo.currentTodos.value) {
-            state[booleanPreferencesKey(todo.id.toString())] = todo.isChecked
-        }
-    }
+    loadWidgetState(context, glanceId)
 
     // Redraw widget
     TodoWidget().update(context, glanceId)
+}
+
+private suspend fun loadWidgetState(context: Context, glanceId: GlanceId) {
+    val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+    widgetRefreshLocks.computeIfAbsent(appWidgetId) { Mutex() }.withLock {
+        if (appWidgetId !in WidgetConfig.getWidgetIds(context)) return@withLock
+        withContext(Dispatchers.IO) {
+            val config = WidgetConfig.loadFromPrefs(context, appWidgetId)
+            val todos = TodoRepo.getTodos(config)
+            ReminderRepo.getInstance().update(context, appWidgetId, config, todos)
+            updateAppWidgetState(context, glanceId) { state ->
+                val gson = Gson()
+                state[widgetConfigKey] = gson.toJson(config)
+                state[widgetTodosKey] = gson.toJson(todos)
+                todos.forEach { todo ->
+                    state[booleanPreferencesKey(todo.id.toString())] = todo.isChecked
+                }
+            }
+        }
+    }
 }
 
 class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -309,10 +336,32 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
     }
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        runBlocking {
+            appWidgetIds.forEach { id ->
+                widgetRefreshLocks.computeIfAbsent(id) { Mutex() }.withLock {
+                    WidgetConfig.delete(context, intArrayOf(id))
+                    ReminderRepo.getInstance().deleteWidget(context, id)
+                }
+            }
+        }
         super.onDeleted(context, appWidgetIds)
         TodoWidget().removeOnScreenReceiver(context)
         Counter(context, true).reset()
         Counter(context, false).reset()
+    }
+
+    override fun onRestored(context: Context, oldWidgetIds: IntArray, newWidgetIds: IntArray) {
+        WidgetConfig.restore(context, oldWidgetIds, newWidgetIds)
+        oldWidgetIds.forEach { id ->
+            ReminderRepo.getInstance().deleteWidget(context, id)
+        }
+        val manager = AppWidgetManager.getInstance(context)
+        newWidgetIds.forEach { id ->
+            manager.updateAppWidgetOptions(id, Bundle().apply {
+                putBoolean(AppWidgetManager.OPTION_APPWIDGET_RESTORE_COMPLETED, true)
+            })
+        }
+        super.onRestored(context, oldWidgetIds, newWidgetIds)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -337,7 +386,14 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
             }
             ActionsConstants.UPDATE_WIDGET -> {
                 runBlocking {
-                    updateAllWidgets(context)
+                    val id = intent.getIntExtra(
+                        AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID
+                    )
+                    if (id == AppWidgetManager.INVALID_APPWIDGET_ID) {
+                        updateAllWidgets(context)
+                    } else {
+                        refreshTodos(context, GlanceAppWidgetManager(context).getGlanceIdBy(id))
+                    }
                 }
             }
         }
