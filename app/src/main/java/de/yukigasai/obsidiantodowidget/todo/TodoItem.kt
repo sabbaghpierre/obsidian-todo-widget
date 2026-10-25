@@ -2,45 +2,41 @@ package de.yukigasai.obsidiantodowidget.todo
 
 import de.yukigasai.obsidiantodowidget.WidgetConfig
 import de.yukigasai.obsidiantodowidget.util.FsHelper
-import kotlin.text.Regex.Companion.escape
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 
-data class TodoItem(val id: Int, val name:String, val state:String, var isChecked: Boolean, var offSet: String, var count: Int = 0, val repeats: Int?) {
-    fun updateInFile(config: WidgetConfig) {
-        val originalFile = FsHelper.loadTextData(config)
-
-        // Allow items to be unchecked if they are already set to done
-        if(this.isChecked) {
-            val regex = Regex("- \\[[xX]] ${escape(this.name)}\$", RegexOption.MULTILINE)
-            val newFileData = originalFile.replace(regex, "- [ ] ${this.name}")
-            FsHelper.overwriteFile(config.getFullPath(), newFileData)
-            return
+data class TodoItem(
+    val id: Int,
+    val name: String,
+    val state: String,
+    val isChecked: Boolean,
+    val offSet: String,
+    val count: Int = 0,
+    val repeats: Int?,
+    val sourcePath: String? = null,
+    val sourceRevision: String? = null,
+    val stateOffset: Int = -1
+) {
+    fun updateInFile(config: WidgetConfig, checked: Boolean? = null): TodoItem? {
+        val replacement = when {
+            checked != null -> if (checked) "x" else " "
+            isChecked -> " "
+            repeats != null && count.toLong() + 1 < repeats -> (count + 1).toString()
+            else -> "x"
         }
+        val revision = FsHelper.updateTask(config, this, replacement) ?: return null
+        return copy(
+            state = replacement,
+            isChecked = replacement == "x",
+            count = replacement.toIntOrNull() ?: 0,
+            sourceRevision = revision
+        )
+    }
 
-        // If not repeat allow item to be checked
-        if(this.repeats == null && !this.isChecked) {
-            val regex = Regex("- \\[[^xX]] ${escape(this.name)}\$", RegexOption.MULTILINE)
-            val newFileData = originalFile.replace(regex, "- [x] ${this.name}")
-            FsHelper.overwriteFile(config.getFullPath(), newFileData)
-            return
-        }
-
-        this.count+=1
-
-        // Check item if the repeat count is reached
-        if(this.repeats != null && this.count >= this.repeats) {
-            val regex = Regex("- \\[[^xX]] ${escape(this.name)}\$", RegexOption.MULTILINE)
-            val newFileData = originalFile.replace(regex, "- [x] ${this.name}")
-            FsHelper.overwriteFile(config.getFullPath(), newFileData)
-            return
-        }
-
-        // Increment the count if item is clicked
-        if(this.repeats != null && this.count < this.repeats) {
-            val regex = Regex("- \\[[^xX]] ${escape(this.name)}\$", RegexOption.MULTILINE)
-            val newFileData = originalFile.replace(regex, "- [${this.count}] ${this.name}")
-            FsHelper.overwriteFile(config.getFullPath(), newFileData)
-            return
-        }
+    fun widgetItemId(): Long {
+        val identity = "$sourcePath\n$sourceRevision\n$stateOffset\n$id"
+        val hash = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
+        return ByteBuffer.wrap(hash).long and Long.MAX_VALUE
     }
 
     fun getStateEmoji(): String {

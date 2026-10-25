@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -172,7 +173,7 @@ class TodoWidget : GlanceAppWidget() {
                     )
                 } else {
                     LazyColumn {
-                        items(todos) { todoItem ->
+                        items(todos, itemId = { it.widgetItemId() }) { todoItem ->
                             if(!todoItem.isChecked || !config.hideDoneTasks) {
                                 CheckBoxItem(todoItem, config)
                             }
@@ -210,7 +211,7 @@ private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
             colors = CheckboxDefaults.colors(),
             onCheckedChange = actionRunCallback<CheckboxClickAction>(
                 actionParametersOf(
-                    toggledItemKey to item.id.toString()
+                    toggledItemKey to Gson().toJson(item)
                 ),
             ),
             modifier = GlanceModifier.leftPad(config, item)
@@ -230,7 +231,7 @@ private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
                 modifier = GlanceModifier.leftPad(config, item).then(
                 GlanceModifier.clickable(actionRunCallback<CheckboxClickAction>(
                     actionParametersOf(
-                        toggledItemKey to item.id.toString()
+                        toggledItemKey to Gson().toJson(item)
                     ),
                 ))).then(GlanceModifier.width(30.dp))
             )
@@ -242,7 +243,7 @@ private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
                 ),
                 modifier = GlanceModifier.clickable(actionRunCallback<CheckboxClickAction>(
                     actionParametersOf(
-                        toggledItemKey to item.id.toString()
+                        toggledItemKey to Gson().toJson(item)
                     ),
                 ))
             )
@@ -261,24 +262,25 @@ class CheckboxClickAction : ActionCallback {
 
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
         val config = WidgetConfig.loadFromPrefs(context, appWidgetId)
-        val toggledItemKey = requireNotNull(parameters[toggledItemKey])
+        val taskJson = parameters[toggledItemKey]
         val checked = parameters[ToggleableStateKey]
         val state = TodoWidget().getAppWidgetState<Preferences>(context, glanceId)
-        val todos = Gson().fromJson(state[widgetTodosKey], Array<TodoItem>::class.java).orEmpty()
-        val toggledItem = todos.getOrNull(toggledItemKey.toInt())
+        val toggledItem = taskJson?.takeIf { it.startsWith("{") }?.let {
+            Gson().fromJson(it, TodoItem::class.java)
+        }
         val displayedConfig = Gson().fromJson(state[widgetConfigKey], WidgetConfig::class.java)
         if (toggledItem == null || displayedConfig != config) {
             refreshTodos(context, glanceId)
             return
         }
 
-        if (checked != null) {
-            updateAppWidgetState(context, glanceId) { state ->
-                state[booleanPreferencesKey(toggledItemKey)] = checked
+        val updated = withContext(Dispatchers.IO) { toggledItem.updateInFile(config, checked) }
+        if (updated == null) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, R.string.task_edit_failed, Toast.LENGTH_LONG).show()
             }
         }
 
-        toggledItem.updateInFile(config)
         refreshTodos(context, glanceId)
     }
 }
@@ -379,8 +381,8 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
                 }
             }
             ActionsConstants.END_NOTIFICATION_CHECK -> {
-                ReminderEndReceiver.onReceive(context, intent)
                 runBlocking {
+                    withContext(Dispatchers.IO) { ReminderEndReceiver.onReceive(context, intent) }
                     updateAllWidgets(context)
                 }
             }
