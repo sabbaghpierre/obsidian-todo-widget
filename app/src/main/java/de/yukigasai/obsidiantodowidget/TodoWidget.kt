@@ -312,7 +312,7 @@ private suspend fun loadWidgetState(context: Context, glanceId: GlanceId) {
         withContext(Dispatchers.IO) {
             val config = WidgetConfig.loadFromPrefs(context, appWidgetId)
             val todos = TodoRepo.getTodos(config)
-            ReminderRepo.getInstance().update(context, appWidgetId, config, todos)
+            ReminderRepo.getInstance().update(context)
             updateAppWidgetState(context, glanceId) { state ->
                 val gson = Gson()
                 state[widgetConfigKey] = gson.toJson(config)
@@ -342,9 +342,9 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
             appWidgetIds.forEach { id ->
                 widgetRefreshLocks.computeIfAbsent(id) { Mutex() }.withLock {
                     WidgetConfig.delete(context, intArrayOf(id))
-                    ReminderRepo.getInstance().deleteWidget(context, id)
                 }
             }
+            withContext(Dispatchers.IO) { ReminderRepo.getInstance().update(context) }
         }
         super.onDeleted(context, appWidgetIds)
         TodoWidget().removeOnScreenReceiver(context)
@@ -354,8 +354,8 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onRestored(context: Context, oldWidgetIds: IntArray, newWidgetIds: IntArray) {
         WidgetConfig.restore(context, oldWidgetIds, newWidgetIds)
-        oldWidgetIds.forEach { id ->
-            ReminderRepo.getInstance().deleteWidget(context, id)
+        runBlocking(Dispatchers.IO) {
+            ReminderRepo.getInstance().update(context)
         }
         val manager = AppWidgetManager.getInstance(context)
         newWidgetIds.forEach { id ->
@@ -370,7 +370,9 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
         super.onReceive(context, intent)
 
         when (intent.action) {
-            ActionsConstants.START_NOTIFICATION -> ReminderStartReceiver.onReceive(context, intent)
+            ActionsConstants.START_NOTIFICATION -> runBlocking(Dispatchers.IO) {
+                ReminderStartReceiver.onReceive(context, intent)
+            }
             AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                     (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()

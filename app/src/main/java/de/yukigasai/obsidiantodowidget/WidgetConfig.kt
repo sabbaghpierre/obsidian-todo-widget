@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import androidx.core.content.edit
 import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.util.PreferencesConstants
@@ -75,9 +76,8 @@ data class WidgetConfig(
         return today.format(formatter)
     }
 
-    private fun String.checkForPatterns(): String {
+    private fun String.checkForPatterns(today: LocalDateTime = LocalDateTime.now()): String {
         // Filename has special date placeholder
-        val today:LocalDateTime = LocalDateTime.now()
         // Replace patterns with values for current day
         return Regex("\\{\\{[^}]*\\}\\}").replace(this) {
                 result -> replacePattern(today, result.value)
@@ -109,8 +109,18 @@ data class WidgetConfig(
     }
 
     fun getFullObsidianURL(): String {
-        val getInternalPathToFile = getFullPath().split(vaultName).last()
-        return "obsidian://open?vault=${vaultName}&file=${getInternalPathToFile}"
+        val internalPath = getFullPath().substringAfter("/$vaultName/").trimStart('/')
+        return Uri.Builder()
+            .scheme("obsidian")
+            .authority("open")
+            .appendQueryParameter("vault", vaultName)
+            .appendQueryParameter("file", internalPath)
+            .build().toString()
+    }
+
+    fun resolved(): WidgetConfig {
+        val today = LocalDateTime.now()
+        return copy(folder = folder.checkForPatterns(today), fileName = fileName.checkForPatterns(today))
     }
 
     fun isConfigured(): Boolean {

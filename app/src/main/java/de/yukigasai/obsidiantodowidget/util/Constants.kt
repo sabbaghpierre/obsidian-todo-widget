@@ -6,10 +6,8 @@ object ActionsConstants {
     const val UPDATE_WIDGET         =  "android.appwidget.action.APPWIDGET_UPDATE"
 }
 object ExtrasConstants {
-    const val NOTIFICATION_TITLE   = "EXTRA_NOTIFICATION_TITLE"
-    const val NOTIFICATION_MESSAGE = "EXTRA_NOTIFICATION_MESSAGE"
+    const val REMINDER_ID          = "EXTRA_REMINDER_ID"
     const val NOTIFICATION_TODO    = "EXTRA_NOTIFICATION_TODO"
-    const val NOTIFICATION_CONFIG  = "EXTRA_NOTIFICATION_CONFIG"
 }
 
 object ChannelConstants {

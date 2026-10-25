@@ -28,7 +28,7 @@ data class TodoFactory(val config: WidgetConfig) {
     }
 
     // Create list of todos from the content in the file
-    private fun parseTodos(snapshot: NoteSnapshot): List<TodoItem> {
+    fun getTodos(snapshot: NoteSnapshot): List<TodoItem> {
         val range = sectionRange(snapshot.text)
         if (range.isEmpty()) return emptyList()
         val filteredFileContent = snapshot.text.substring(range)
@@ -57,6 +57,6 @@ data class TodoFactory(val config: WidgetConfig) {
     // Public function to get the Todolist
     fun getTodosFromFile(): List<TodoItem>{
         val snapshot = FsHelper.readNote(config) ?: return emptyList()
-        return parseTodos(snapshot)
+        return getTodos(snapshot)
     }
 }
