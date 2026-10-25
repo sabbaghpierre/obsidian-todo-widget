@@ -1,59 +1,95 @@
 package de.yukigasai.obsidiantodowidget
 
+import android.Manifest
+import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import de.yukigasai.obsidiantodowidget.ui.theme.ObsidianTodoWidgetTheme
+import de.yukigasai.obsidiantodowidget.util.ActionsConstants
 
 
 class MainActivity : ComponentActivity() {
 
-    private val STORAGE_PERMISSION_CODE = 23
+    private var storageGranted by mutableStateOf(false)
+    private var notificationsGranted by mutableStateOf(false)
+    private var exactAlarmsGranted by mutableStateOf(false)
+
+    private val storagePermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { updatePermissionState() }
+
+    private val notificationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { updatePermissionState() }
 
     private fun requestForStoragePermissions() {
-        //Android is 11 (R) or above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val i = Intent()
-            i.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-            startActivity(i)
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+            )
         } else {
-            //Below android 11
-            ActivityCompat.requestPermissions(
-                this, arrayOf<String>(
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE
-                ),
-                STORAGE_PERMISSION_CODE
+            storagePermissionRequest.launch(
+                arrayOf(
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                )
             )
         }
     }
 
-    private fun checkForNotificationPermission(): Boolean{
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-             return (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+    private fun requestNotificationPermission() {
+        val preferences = getPreferences(MODE_PRIVATE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED &&
+            !preferences.getBoolean("notification_permission_requested", false)
+        ) {
+            preferences.edit().putBoolean("notification_permission_requested", true).apply()
+            notificationPermissionRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            )
         }
-        return true
     }
 
     fun checkStoragePermissions(): Boolean {
@@ -72,16 +108,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if(!checkStoragePermissions()){
-            requestForStoragePermissions()
-        }
-
-        if(!checkForNotificationPermission()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
-            }
-        }
+        enableEdgeToEdge()
 
         setContent {
             ObsidianTodoWidgetTheme {
@@ -90,24 +117,77 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting()
+                    PermissionSettings()
 //                    ColorBox()
                 }
             }
         }
     }
-}
 
-@Composable
-fun Greeting() {
-    Text(
-        modifier = Modifier.padding(8.dp),
-        text = "",
-    )
-    Text(
-        modifier = Modifier.padding(8.dp),
-        text = "This is a widget app. This application only exists to allow the widget the Write External Storage Permission. Please grant the permission for the widget to work.",
-    )
+    override fun onResume() {
+        super.onResume()
+        updatePermissionState()
+        if (storageGranted && WidgetConfig.loadFromPrefs(this).isConfigured()) {
+            sendBroadcast(
+                Intent(this, TodoWidgetReceiver::class.java)
+                    .setAction(ActionsConstants.UPDATE_WIDGET)
+            )
+        }
+    }
+
+    private fun updatePermissionState() {
+        storageGranted = checkStoragePermissions()
+        notificationsGranted = NotificationManagerCompat.from(this).areNotificationsEnabled()
+        exactAlarmsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            (getSystemService(ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+    }
+
+    @Composable
+    private fun PermissionSettings() {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(stringResource(R.string.permissions_title), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.storage_permission_description))
+            Button(onClick = { requestForStoragePermissions() }, enabled = !storageGranted) {
+                Text(stringResource(
+                    if (storageGranted) R.string.storage_permission_granted
+                    else R.string.storage_permission_allow
+                ))
+            }
+            Text(stringResource(R.string.notification_permission_description))
+            Button(onClick = { requestNotificationPermission() }, enabled = !notificationsGranted) {
+                Text(stringResource(
+                    if (notificationsGranted) R.string.notifications_enabled
+                    else R.string.notifications_allow
+                ))
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Text(stringResource(R.string.exact_alarm_permission_description))
+                Button(
+                    onClick = {
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                Uri.parse("package:$packageName")
+                            )
+                        )
+                    },
+                    enabled = !exactAlarmsGranted
+                ) {
+                    Text(stringResource(
+                        if (exactAlarmsGranted) R.string.exact_alarms_enabled
+                        else R.string.exact_alarms_allow
+                    ))
+                }
+            }
+        }
+    }
 }
 @Composable
 fun ColorBox() {

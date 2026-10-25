@@ -1,121 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:fillViewport="true">
 
-    <TextView
-        android:id="@+id/tv_config_header"
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/config_header"
-        android:textAlignment="center"
-        android:textSize="24sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:paddingBottom="16dp">
 
-    <EditText
-        android:id="@+id/et_config_vault_name"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="24dp"
-        android:autofillHints="no"
-        android:ems="10"
-        android:hint="@string/config_vault_name_hint"
-        android:inputType="text"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_config_header" />
+        <TextView
+            android:id="@+id/tv_config_header"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/config_header"
+            android:textAlignment="center"
+            android:textSize="24sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.494"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <EditText
-        android:id="@+id/et_config_folder_path"
-        android:layout_width="220dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="16dp"
-        android:autofillHints="no"
-        android:ems="10"
-        android:hint="@string/config_folder_path_hint"
-        android:inputType="text"
-        app:layout_constraintStart_toStartOf="@+id/switch_config_hide_done"
-        app:layout_constraintTop_toBottomOf="@+id/switch_config_hide_done" />
+        <EditText
+            android:id="@+id/et_config_vault_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="24dp"
+            android:autofillHints="no"
+            android:ems="10"
+            android:hint="@string/config_vault_name_hint"
+            android:inputType="text"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.494"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tv_config_header" />
 
-    <Button
-        android:id="@+id/btn_config_create"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="24dp"
-        android:hint="@string/config_create_button"
-        android:text="@string/config_create_button"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/switch_config_include_sub_header" />
+        <EditText
+            android:id="@+id/et_config_folder_path"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginTop="16dp"
+            android:autofillHints="no"
+            android:ems="10"
+            android:hint="@string/config_folder_path_hint"
+            android:inputType="text"
+            app:layout_constraintStart_toStartOf="@+id/switch_config_hide_done"
+            app:layout_constraintEnd_toStartOf="@+id/btn_config_select_folder"
+            app:layout_constraintTop_toBottomOf="@+id/switch_config_hide_done" />
 
-    <EditText
-        android:id="@+id/et_config_file_name"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="16dp"
-        android:autofillHints="no"
-        android:ems="10"
-        android:hint="@string/config_file_name_hint"
-        android:inputType="text"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_config_folder_path" />
+        <Button
+            android:id="@+id/btn_config_create"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="24dp"
+            android:hint="@string/config_create_button"
+            android:text="@string/config_create_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.494"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/switch_config_include_sub_header" />
 
-    <EditText
-        android:id="@+id/et_config_header"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="16dp"
-        android:autofillHints="no"
-        android:ems="10"
-        android:hint="@string/config_header_hint"
-        android:inputType="text"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_config_file_name" />
+        <EditText
+            android:id="@+id/et_config_file_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="16dp"
+            android:autofillHints="no"
+            android:ems="10"
+            android:hint="@string/config_file_name_hint"
+            android:inputType="text"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.494"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/et_config_folder_path" />
 
-    <Button
-        android:id="@+id/btn_config_select_folder"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/config_select_button"
-        app:layout_constraintEnd_toEndOf="@+id/switch_config_hide_done"
-        app:layout_constraintTop_toBottomOf="@+id/switch_config_hide_done" />
+        <EditText
+            android:id="@+id/et_config_header"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="16dp"
+            android:autofillHints="no"
+            android:ems="10"
+            android:hint="@string/config_header_hint"
+            android:inputType="text"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.494"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/et_config_file_name" />
 
-    <Switch
-        android:id="@+id/switch_config_hide_done"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="16dp"
-        android:text="@string/config_hide_done_text"
-        android:textSize="18sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_config_vault_name" />
+        <Button
+            android:id="@+id/btn_config_select_folder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/config_select_button"
+            app:layout_constraintEnd_toEndOf="@+id/switch_config_hide_done"
+            app:layout_constraintTop_toBottomOf="@+id/switch_config_hide_done" />
 
-    <Switch
-        android:id="@+id/switch_config_include_sub_header"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        android:layout_marginTop="16dp"
-        android:text="@string/config_sub_header_text"
-        android:textSize="18sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.494"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/et_config_header" />
+        <Switch
+            android:id="@+id/switch_config_hide_done"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="16dp"
+            android:text="@string/config_hide_done_text"
+            android:textSize="18sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.494"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/et_config_vault_name" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <Switch
+            android:id="@+id/switch_config_include_sub_header"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="16dp"
+            android:text="@string/config_sub_header_text"
+            android:textSize="18sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.494"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/et_config_header" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

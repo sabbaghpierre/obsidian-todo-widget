@@ -1,6 +1,6 @@
 package de.yukigasai.obsidiantodowidget
 
-import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
@@ -34,6 +34,7 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.ToggleableStateKey
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
@@ -130,7 +131,10 @@ class TodoWidget : GlanceAppWidget() {
                         text = config.getArticleFileName().dropLast(3),
                         // text = "${Counter(context, true).count} ${Counter(context, false).count} ${config.getArticleFileName().dropLast(3)}",
                         modifier = modifier.then(
-                            GlanceModifier.clickable(actionRunCallback<OpenObsidianAction>())
+                            GlanceModifier.clickable(actionStartActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(config.getFullObsidianURL()))
+                                    .addFlags(FLAG_ACTIVITY_NEW_TASK)
+                            ))
                         ),
                         maxLines = 1,
                         style = TextStyle(
@@ -237,22 +241,6 @@ private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
 
 private val toggledItemKey = ActionParameters.Key<String>(KeysConstants.TOGGLE_ITEM_KEY)
 
-class OpenObsidianAction : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-
-        val config = WidgetConfig.loadFromPrefs(context)
-
-        Intent(Intent.ACTION_VIEW, Uri.parse(config.getFullObsidianURL())).apply {
-            flags = FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(this)
-        }
-    }
-}
-
 class CheckboxClickAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
@@ -289,7 +277,6 @@ class RefreshButtonHandler : ActionCallback {
 /**
  * Force update the todo info after user click
  */
-@SuppressLint("ScheduleExactAlarm")
 suspend fun refreshTodos(context: Context, glanceId: GlanceId) {
     val config = WidgetConfig.loadFromPrefs(context)
 
@@ -333,6 +320,15 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
 
         when (intent.action) {
             ActionsConstants.START_NOTIFICATION -> ReminderStartReceiver.onReceive(context, intent)
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+                ) {
+                    runBlocking {
+                        updateAllWidgets(context)
+                    }
+                }
+            }
             ActionsConstants.END_NOTIFICATION_CHECK -> {
                 ReminderEndReceiver.onReceive(context, intent)
                 runBlocking {

@@ -1,6 +1,16 @@
 <resources>
     <string name="app_name">ObsidianTodoWidget</string>
     <string name="app_widget_description">Show todos from an obsidian note</string>
+    <string name="permissions_title">Widget permissions</string>
+    <string name="storage_permission_description">Allow file access so widgets can read and update your Obsidian notes.</string>
+    <string name="storage_permission_allow">Allow file access</string>
+    <string name="storage_permission_granted">File access allowed</string>
+    <string name="notification_permission_description">Allow notifications to receive task reminders.</string>
+    <string name="notifications_allow">Allow notifications</string>
+    <string name="notifications_enabled">Notifications enabled</string>
+    <string name="exact_alarm_permission_description">Allow alarms and reminders for on-time notifications. Without this access, reminders may arrive late.</string>
+    <string name="exact_alarms_allow">Allow exact reminders</string>
+    <string name="exact_alarms_enabled">Exact reminders enabled</string>
 
 <!--    Configuration Text-->
     <string name="config_header">Configure your widget</string>

@@ -3,8 +3,8 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <application
@@ -21,6 +21,7 @@
         <activity
             android:theme="@style/Theme.ObsidianTodoWidget"
             android:name=".TodoWidgetConfigurationActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
@@ -33,6 +34,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
                 <action android:name="de.yukigasai.obsidiantodowidget.ACTION_UPDATE_CONFIG" />
                 <action android:name="de.yukigasai.obsidiantodowidget.ACTION_END_NOTIFICATION_CHECK" />
                 <action android:name="de.yukigasai.obsidiantodowidget.ACTION_START_NOTIFICATION" />

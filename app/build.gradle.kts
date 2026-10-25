@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "de.yukigasai.obsidiantodowidget"
         minSdk = 26
-        targetSdk = 33
+        targetSdk = 36
         versionCode = 10
         versionName = "0.0.10"
 
