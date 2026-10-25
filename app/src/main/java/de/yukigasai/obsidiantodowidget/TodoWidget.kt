@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import androidx.core.content.ContextCompat.registerReceiver
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.glance.BackgroundModifier
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -102,9 +101,8 @@ class TodoWidget : GlanceAppWidget() {
             return cornerRadius(android.R.dimen.system_app_widget_background_radius)
         }
 
-        return this.then(
-            BackgroundModifier(
-                ImageProvider(R.drawable.background_widget), ContentScale.Fit)
+        return background(
+            ImageProvider(R.drawable.background_widget), ContentScale.Fit
         )
     }
 
