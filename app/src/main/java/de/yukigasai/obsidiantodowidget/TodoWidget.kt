@@ -237,7 +237,7 @@ private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
                 ))).then(GlanceModifier.width(30.dp))
             )
             Text(
-                text = item.name,
+                text = item.getTodoText(),
                 style = TextStyle(
                     fontSize = 15.sp,
                     color = GlanceTheme.colors.onSurface,

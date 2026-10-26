@@ -130,11 +130,5 @@ data class TodoItem(
         return number.toString()
     }
 
-    fun getTodoText(): String {
-
-        val replaceLink = Regex("\\[([^]]+)]\\([^)]*\\)")
-
-        return name.replace(replaceLink, "$1")
-
-    }
+    fun getTodoText(): String = MarkdownLabel.format(name)
 }
