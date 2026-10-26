@@ -15,7 +15,8 @@ data class TodoItem(
     val repeats: Int?,
     val sourcePath: String? = null,
     val sourceRevision: String? = null,
-    val stateOffset: Int = -1
+    val stateOffset: Int = -1,
+    val sourceHeading: String? = null
 ) {
     fun updateInFile(config: WidgetConfig, checked: Boolean? = null): TodoItem? {
         val replacement = when {

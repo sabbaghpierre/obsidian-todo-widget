@@ -111,13 +111,14 @@ data class WidgetConfig(
         return "${getFolderPath()}${getArticleFileName()}"
     }
 
-    fun getFullObsidianURL(): String {
+    fun getFullObsidianURL(heading: String? = null): String {
         val internalPath = getFullPath().substringAfter("/$vaultName/").trimStart('/')
+        val file = if (heading.isNullOrBlank()) internalPath else "$internalPath#$heading"
         return Uri.Builder()
             .scheme("obsidian")
             .authority("open")
             .appendQueryParameter("vault", vaultName)
-            .appendQueryParameter("file", internalPath)
+            .appendQueryParameter("file", file)
             .build().toString()
     }
 

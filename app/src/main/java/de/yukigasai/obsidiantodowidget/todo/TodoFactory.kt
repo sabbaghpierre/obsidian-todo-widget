@@ -33,12 +33,18 @@ data class TodoFactory(val config: WidgetConfig) {
         if (range.isEmpty()) return emptyList()
         val filteredFileContent = snapshot.text.substring(range)
         val repeatPattern = Regex("#(\\d+)")
+        val headings = getHeadings(snapshot.text)
+        var headingIndex = 0
         return Regex(
             "^(?:\\uFEFF)?([^\\S\\r\\n]*)- \\[([0-9]+|[^\\r\\n])] ([^\\r\\n]*)\$",
             RegexOption.MULTILINE
         )
             .findAll(filteredFileContent)
             .mapIndexed { index, todo ->
+                val stateOffset = range.first + requireNotNull(todo.groups[2]).range.first
+                while (headingIndex < headings.size && headings[headingIndex].first < stateOffset) {
+                    headingIndex++
+                }
                 TodoItem(
                     id = index,
                     name = todo.groupValues[3],
@@ -49,9 +55,38 @@ data class TodoFactory(val config: WidgetConfig) {
                     repeats = repeatPattern.find(todo.groupValues[3])?.groupValues?.get(1)?.toIntOrNull(),
                     sourcePath = snapshot.path,
                     sourceRevision = snapshot.revision,
-                    stateOffset = range.first + requireNotNull(todo.groups[2]).range.first,
+                    stateOffset = stateOffset,
+                    sourceHeading = headings.getOrNull(headingIndex - 1)?.second,
                 )
             }.toList()
+    }
+
+    private fun getHeadings(text: String): List<Pair<Int, String>> {
+        val headings = mutableListOf<Pair<Int, String>>()
+        val heading = Regex("^ {0,3}#{1,6}[\\t ]+(.+?)[\\t ]*$")
+        val closingHashes = Regex("[\\t ]+#+[\\t ]*$")
+        val fence = Regex("^ {0,3}(`{3,}|~{3,})(.*)$")
+        var fenceMarker: Char? = null
+        var fenceLength = 0
+        for (line in Regex("[^\\n]*(?:\\n|$)").findAll(text)) {
+            val content = line.value.trimEnd('\r', '\n').removePrefix("\uFEFF")
+            val fenceMatch = fence.matchEntire(content)
+            if (fenceMarker != null) {
+                if (fenceMatch != null && fenceMatch.groupValues[1].first() == fenceMarker &&
+                    fenceMatch.groupValues[1].length >= fenceLength && fenceMatch.groupValues[2].isBlank()
+                ) fenceMarker = null
+                continue
+            }
+            if (fenceMatch != null) {
+                fenceMarker = fenceMatch.groupValues[1].first()
+                fenceLength = fenceMatch.groupValues[1].length
+                continue
+            }
+            val match = heading.matchEntire(content) ?: continue
+            val title = match.groupValues[1].replace(closingHashes, "").trim()
+            if (title.isNotEmpty()) headings.add(line.range.first to title)
+        }
+        return headings
     }
 
     fun appendTask(text: String, task: String): String? {

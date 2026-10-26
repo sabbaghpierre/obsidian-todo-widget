@@ -12,6 +12,7 @@ import de.yukigasai.obsidiantodowidget.todo.TodoItem
 import de.yukigasai.obsidiantodowidget.todo.TodoRepo
 import de.yukigasai.obsidiantodowidget.todo.WidgetSnapshot
 import de.yukigasai.obsidiantodowidget.util.PreferencesConstants
+import de.yukigasai.obsidiantodowidget.util.RefreshTimings
 
 class ReminderRepo private constructor() {
     companion object {
@@ -131,9 +132,12 @@ class ReminderRepo private constructor() {
     }
 
     @Synchronized
-    fun refresh(context: Context): Map<Int, WidgetSnapshot> {
+    fun refresh(context: Context, started: Long): Map<Int, WidgetSnapshot> {
+        RefreshTimings.mark(started, "reminder_lock_acquired")
         val snapshots = TodoRepo.getSnapshots(context)
+        RefreshTimings.mark(started, "notes_read_and_parsed")
         reconcile(context, snapshots)
+        RefreshTimings.mark(started, "reminders_reconciled")
         return snapshots
     }
 
@@ -157,7 +161,7 @@ class ReminderRepo private constructor() {
         val state = reconcile(context)
         val reminder = state.reminders[id] ?: return false
         if (id !in state.validated || !reminder.delivered ||
-            todo.copy(id = reminder.todo.id) != reminder.todo
+            todo.copy(id = reminder.todo.id, sourceHeading = reminder.todo.sourceHeading) != reminder.todo
         ) return false
         if (!TaskUndo.completeReminder(context, reminder.config, todo)) return false
         save(context, (state.reminders - id).values)

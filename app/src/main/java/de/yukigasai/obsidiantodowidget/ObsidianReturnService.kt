@@ -60,9 +60,9 @@ class ObsidianReturnService : AccessibilityService() {
                 armed = false
                 refreshJob = scope.launch {
                     delay(150)
-                    refreshOnce()
+                    refreshOnce("obsidian_home")
                     delay(3_000)
-                    refreshOnce()
+                    refreshOnce("obsidian_follow_up")
                 }
             }
         } else {
@@ -71,10 +71,10 @@ class ObsidianReturnService : AccessibilityService() {
         }
     }
 
-    private suspend fun refreshOnce() {
+    private suspend fun refreshOnce(reason: String) {
         try {
             if (WidgetConfig.getWidgetIds(this).isEmpty()) return
-            WidgetRefresher.refresh(applicationContext)
+            WidgetRefresher.refresh(applicationContext, reason)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {

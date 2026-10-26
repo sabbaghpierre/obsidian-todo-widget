@@ -8,8 +8,10 @@ import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -41,17 +43,19 @@ import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
+import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import androidx.glance.text.TextAlign
-import androidx.glance.text.TextDecoration
 import androidx.glance.text.TextStyle
 import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.reminder.ReminderEndReceiver
@@ -62,6 +66,7 @@ import de.yukigasai.obsidiantodowidget.todo.TodoItem
 import de.yukigasai.obsidiantodowidget.util.ActionsConstants
 import de.yukigasai.obsidiantodowidget.util.KeysConstants
 import de.yukigasai.obsidiantodowidget.util.OnScreenReceiver
+import de.yukigasai.obsidiantodowidget.util.RefreshTimings
 import de.yukigasai.obsidiantodowidget.util.WidgetLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +77,7 @@ class TodoWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        Log.i("WidgetRefresh", "widget=$appWidgetId/session_started")
         provideContent { Content(appWidgetId) }
     }
 
@@ -89,6 +95,9 @@ class TodoWidget : GlanceAppWidget() {
     fun Content(appWidgetId: Int) {
         val context = LocalContext.current
         val preferences = currentState<Preferences>()
+        preferences[WidgetRefresher.refreshStartedKey]?.let { started ->
+            SideEffect { RefreshTimings.mark(started, "widget=$appWidgetId/composition_applied") }
+        }
         val configJson = preferences[WidgetRefresher.sourceKey] ?: preferences[WidgetRefresher.configKey]
         if (configJson == null) {
             GlanceTheme { Text("Loading…") }
@@ -188,67 +197,52 @@ class TodoWidget : GlanceAppWidget() {
 
 @Composable
 private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
-
-    fun GlanceModifier.leftPad(config: WidgetConfig, item: TodoItem): GlanceModifier {
-        if (!config.hideDoneTasks) {
-            return this.then(GlanceModifier.padding(
-                start = (12 * (item.offSet.length - 1) + 8).dp,
-                top = 4.dp,
-                end = 4.dp,
-                bottom = 4.dp,
-            ))
-        }
-        return this.then(GlanceModifier.padding(4.dp))
-    }
-
-    if(item.getStateEmoji() == "") {
-
-        val prefs = currentState<Preferences>()
-        val checked = prefs[booleanPreferencesKey(item.id.toString())] ?: item.isChecked
-        CheckBox(
-            text = item.getTodoText(),
-            style = TextStyle(GlanceTheme.colors.onBackground),
-            checked = checked,
-            colors = CheckboxDefaults.colors(),
-            onCheckedChange = actionRunCallback<CheckboxClickAction>(
-                actionParametersOf(
-                    toggledItemKey to Gson().toJson(item)
-                ),
-            ),
-            modifier = GlanceModifier.leftPad(config, item)
-        )
-    } else {
-        Row (
-            verticalAlignment = Alignment.Vertical.CenterVertically,
-        ){
-            Text(
-                text = item.getStateEmoji(),
-                style = TextStyle(
-                    fontSize = 18.sp,
-                    textAlign = TextAlign.Right,
-                    textDecoration = TextDecoration.None,
-                    color = GlanceTheme.colors.onSurface,
-                ),
-                modifier = GlanceModifier.leftPad(config, item).then(
-                GlanceModifier.clickable(actionRunCallback<CheckboxClickAction>(
-                    actionParametersOf(
-                        toggledItemKey to Gson().toJson(item)
-                    ),
-                ))).then(GlanceModifier.width(30.dp))
+    val context = LocalContext.current
+    val preferences = currentState<Preferences>()
+    val label = item.getTodoText()
+    val emoji = item.getStateEmoji()
+    val toggle = actionRunCallback<CheckboxClickAction>(
+        actionParametersOf(toggledItemKey to Gson().toJson(item))
+    )
+    val indent = if (config.hideDoneTasks) 4 else (12 * (item.offSet.length - 1) + 8).coerceAtLeast(4)
+    Row(
+        modifier = GlanceModifier.fillMaxWidth().padding(start = indent.dp, end = 4.dp),
+        verticalAlignment = Alignment.Vertical.CenterVertically
+    ) {
+        if (emoji.isEmpty()) {
+            CheckBox(
+                text = "",
+                checked = preferences[booleanPreferencesKey(item.id.toString())] ?: item.isChecked,
+                colors = CheckboxDefaults.colors(),
+                onCheckedChange = toggle,
+                modifier = GlanceModifier.size(48.dp).semantics {
+                    contentDescription = context.getString(R.string.task_completion_control, label)
+                }
             )
-            Text(
-                text = item.getTodoText(),
-                style = TextStyle(
-                    fontSize = 15.sp,
-                    color = GlanceTheme.colors.onSurface,
-                ),
-                modifier = GlanceModifier.clickable(actionRunCallback<CheckboxClickAction>(
-                    actionParametersOf(
-                        toggledItemKey to Gson().toJson(item)
-                    ),
+        } else {
+            Box(
+                modifier = GlanceModifier.size(48.dp).clickable(toggle).semantics {
+                    contentDescription = context.getString(R.string.task_state_control, label)
+                },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = emoji,
+                    style = TextStyle(fontSize = 18.sp, color = GlanceTheme.colors.onSurface)
+                )
+            }
+        }
+        Text(
+            text = label,
+            style = TextStyle(fontSize = 15.sp, color = GlanceTheme.colors.onBackground),
+            modifier = GlanceModifier.defaultWeight()
+                .clickable(actionStartActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse(config.getFullObsidianURL(item.sourceHeading)))
+                        .setPackage("md.obsidian")
+                        .addFlags(FLAG_ACTIVITY_NEW_TASK)
                 ))
-            )
-        }
+                .padding(top = 12.dp, bottom = 12.dp)
+        )
     }
 }
 
@@ -313,7 +307,7 @@ class RefreshButtonHandler : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        WidgetRefresher.refresh(context)
+        WidgetRefresher.refresh(context, "manual")
     }
 }
 
