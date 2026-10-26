@@ -18,8 +18,8 @@ import de.yukigasai.obsidiantodowidget.util.WidgetLogger
 class TodoWidgetConfigurationActivity : ComponentActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
 
-    public override fun onCreate(icicle: Bundle?) {
-        super.onCreate(icicle)
+    public override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
         // Find the widget id from the intent.
         appWidgetId = intent?.extras?.getInt(
