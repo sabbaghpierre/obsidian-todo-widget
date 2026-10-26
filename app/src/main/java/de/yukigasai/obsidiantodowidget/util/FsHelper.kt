@@ -26,12 +26,19 @@ object FsHelper {
         MessageDigest.getInstance("SHA-256").digest(bytes), Base64.NO_WRAP
     )
 
-    fun readNote(config: WidgetConfig): NoteSnapshot? {
+    fun readNote(
+        config: WidgetConfig,
+        cache: MutableMap<String, NoteSnapshot?> = mutableMapOf()
+    ): NoteSnapshot? {
+        var path: String? = null
         return try {
             val file = noteFile(config)
+            path = file.path
+            if (cache.containsKey(file.path)) return cache[file.path]
             val bytes = file.readBytes()
-            NoteSnapshot(file.path, decode(bytes), revision(bytes))
+            NoteSnapshot(file.path, decode(bytes), revision(bytes)).also { cache[file.path] = it }
         } catch (error: Exception) {
+            path?.let { cache[it] = null }
             WidgetLogger.error("FsHelper.readNote error: ${error.message}")
             null
         }

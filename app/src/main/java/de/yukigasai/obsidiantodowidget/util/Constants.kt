@@ -3,7 +3,7 @@ package de.yukigasai.obsidiantodowidget.util
 object ActionsConstants {
     const val START_NOTIFICATION     = "de.yukigasai.obsidiantodowidget.ACTION_START_NOTIFICATION"
     const val END_NOTIFICATION_CHECK = "de.yukigasai.obsidiantodowidget.ACTION_END_NOTIFICATION_CHECK"
-    const val UPDATE_WIDGET         =  "android.appwidget.action.APPWIDGET_UPDATE"
+    const val UPDATE_WIDGET         = "de.yukigasai.obsidiantodowidget.ACTION_REFRESH_WIDGET"
 }
 object ExtrasConstants {
     const val REMINDER_ID          = "EXTRA_REMINDER_ID"

@@ -7,10 +7,9 @@ import android.content.Context
 import androidx.core.content.edit
 import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.WidgetConfig
-import de.yukigasai.obsidiantodowidget.todo.TodoFactory
 import de.yukigasai.obsidiantodowidget.todo.TodoItem
-import de.yukigasai.obsidiantodowidget.util.FsHelper
-import de.yukigasai.obsidiantodowidget.util.NoteSnapshot
+import de.yukigasai.obsidiantodowidget.todo.TodoRepo
+import de.yukigasai.obsidiantodowidget.todo.WidgetSnapshot
 import de.yukigasai.obsidiantodowidget.util.PreferencesConstants
 
 class ReminderRepo private constructor() {
@@ -66,20 +65,24 @@ class ReminderRepo private constructor() {
         }
     }
 
-    private fun reconcile(context: Context): ReminderState {
+    private fun reconcile(
+        context: Context,
+        snapshots: Map<Int, WidgetSnapshot> = TodoRepo.getSnapshots(context)
+    ): ReminderState {
         migrateLegacy(context)
         val previous = read(context)
         val reminders = linkedMapOf<String, Reminder>()
         val validated = mutableSetOf<String>()
-        val snapshots = mutableMapOf<String, NoteSnapshot>()
         val factory = ReminderFactory()
         val now = System.currentTimeMillis()
+        val activeIds = WidgetConfig.getWidgetIds(context).toSet()
 
-        WidgetConfig.getWidgetIds(context).sorted().forEach widget@ { widgetId ->
-            val config = WidgetConfig.loadFromPrefs(context, widgetId).resolved()
+        snapshots.toSortedMap().forEach widget@ { (widgetId, snapshot) ->
+            if (widgetId !in activeIds) return@widget
+            val config = snapshot.source
             if (!config.isConfigured()) return@widget
-            val readSnapshot = FsHelper.readNote(config)
-            if (readSnapshot == null) {
+            val todos = snapshot.todos
+            if (todos == null) {
                 previous.forEach { (id, reminder) ->
                     if (reminder.config.copy(hideDoneTasks = config.hideDoneTasks) == config) {
                         reminders.putIfAbsent(id, reminder)
@@ -87,8 +90,7 @@ class ReminderRepo private constructor() {
                 }
                 return@widget
             }
-            val snapshot = snapshots.getOrPut(readSnapshot.path) { readSnapshot }
-            TodoFactory(config).getTodos(snapshot).forEach task@ { todo ->
+            todos.forEach task@ { todo ->
                 val parsed = factory.createFromTodo(todo, config) ?: return@task
                 val overdue = previous.values.firstOrNull {
                     it.date <= now && it.todo.sourcePath == todo.sourcePath &&
@@ -128,8 +130,10 @@ class ReminderRepo private constructor() {
     }
 
     @Synchronized
-    fun update(context: Context) {
-        reconcile(context)
+    fun refresh(context: Context): Map<Int, WidgetSnapshot> {
+        val snapshots = TodoRepo.getSnapshots(context)
+        reconcile(context, snapshots)
+        return snapshots
     }
 
     @Synchronized
@@ -155,7 +159,10 @@ class ReminderRepo private constructor() {
             todo.copy(id = reminder.todo.id) != reminder.todo
         ) return false
         if (todo.updateInFile(reminder.config, checked = true) == null) return false
-        reconcile(context)
+        save(context, (state.reminders - id).values)
+        cancelAlarm(context, id)
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .cancel("reminder:$id", 0)
         return true
     }
 

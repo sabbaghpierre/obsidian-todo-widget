@@ -118,8 +118,7 @@ data class WidgetConfig(
             .build().toString()
     }
 
-    fun resolved(): WidgetConfig {
-        val today = LocalDateTime.now()
+    fun resolved(today: LocalDateTime = LocalDateTime.now()): WidgetConfig {
         return copy(folder = folder.checkForPatterns(today), fileName = fileName.checkForPatterns(today))
     }
 
