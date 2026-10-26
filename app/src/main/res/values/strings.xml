@@ -14,6 +14,10 @@
     <string name="task_edit_failed">The note changed or could not be saved. Open the note or refresh the widget and try again.</string>
     <string name="obsidian_return_service_label">Refresh after Obsidian</string>
     <string name="obsidian_return_service_description">Refresh widgets when you leave Obsidian for your home launcher. This service uses app-window changes only and does not read screen contents or perform gestures. Disable it here at any time.</string>
+    <string name="obsidian_return_setup_description">Optional: enable Refresh after Obsidian in Android Accessibility settings to refresh widgets when returning home from Obsidian. It observes app-window changes only, without reading screen contents or performing gestures.</string>
+    <string name="obsidian_return_enabled">Refresh after Obsidian is enabled</string>
+    <string name="obsidian_return_disabled">Refresh after Obsidian is disabled</string>
+    <string name="accessibility_settings_open">Open Accessibility settings</string>
 
 <!--    Configuration Text-->
     <string name="config_header">Configure your widget</string>

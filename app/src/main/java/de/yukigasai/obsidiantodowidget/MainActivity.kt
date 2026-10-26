@@ -1,7 +1,9 @@
 package de.yukigasai.obsidiantodowidget
 
 import android.Manifest
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.AlarmManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
@@ -10,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -47,6 +50,7 @@ class MainActivity : ComponentActivity() {
     private var storageGranted by mutableStateOf(false)
     private var notificationsGranted by mutableStateOf(false)
     private var exactAlarmsGranted by mutableStateOf(false)
+    private var obsidianReturnEnabled by mutableStateOf(false)
 
     private val storagePermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -140,6 +144,10 @@ class MainActivity : ComponentActivity() {
         notificationsGranted = NotificationManagerCompat.from(this).areNotificationsEnabled()
         exactAlarmsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             (getSystemService(ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+        val service = ComponentName(this, ObsidianReturnService::class.java)
+        obsidianReturnEnabled = (getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager)
+            .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .any { ComponentName.unflattenFromString(it.id) == service }
     }
 
     @Composable
@@ -185,6 +193,18 @@ class MainActivity : ComponentActivity() {
                         else R.string.exact_alarms_allow
                     ))
                 }
+            }
+            Text(
+                stringResource(R.string.obsidian_return_service_label),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(stringResource(R.string.obsidian_return_setup_description))
+            Text(stringResource(
+                if (obsidianReturnEnabled) R.string.obsidian_return_enabled
+                else R.string.obsidian_return_disabled
+            ))
+            Button(onClick = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }) {
+                Text(stringResource(R.string.accessibility_settings_open))
             }
         }
     }
