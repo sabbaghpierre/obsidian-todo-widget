@@ -3,6 +3,12 @@
 
     <style name="Theme.ObsidianTodoWidget" parent="android:Theme.Material.Light.NoActionBar" />
 
+    <style name="Theme.ObsidianTodoWidget.Dialog" parent="Theme.ObsidianTodoWidget">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <style name="Theme.ObsidianTodoWidget.AppWidgetContainerParent" parent="@android:style/Theme.DeviceDefault">
         <!-- Radius of the outer bound of widgets to make the rounded corners -->
         <item name="appWidgetRadius">16dp</item>

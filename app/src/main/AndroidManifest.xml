@@ -39,6 +39,14 @@
         </service>
 
         <activity
+            android:name=".QuickAddActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.ObsidianTodoWidget.Dialog"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:theme="@style/Theme.ObsidianTodoWidget"
             android:name=".TodoWidgetConfigurationActivity"
             android:windowSoftInputMode="adjustResize"

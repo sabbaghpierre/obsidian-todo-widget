@@ -18,6 +18,12 @@
     <string name="obsidian_return_enabled">Refresh after Obsidian is enabled</string>
     <string name="obsidian_return_disabled">Refresh after Obsidian is disabled</string>
     <string name="accessibility_settings_open">Open Accessibility settings</string>
+    <string name="quick_add_title">Add task</string>
+    <string name="quick_add_task">Task</string>
+    <string name="quick_add_save">Add</string>
+    <string name="quick_add_saving">Saving…</string>
+    <string name="quick_add_cancel">Cancel</string>
+    <string name="quick_add_failed">Could not add the task. Check file access and that the note, selected heading, and widget settings still exist and have not changed.</string>
 
 <!--    Configuration Text-->
     <string name="config_header">Configure your widget</string>

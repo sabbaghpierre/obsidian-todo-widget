@@ -54,6 +54,75 @@ data class TodoFactory(val config: WidgetConfig) {
             }.toList()
     }
 
+    fun appendTask(text: String, task: String): String? {
+        val name = task.trim()
+        if (name.isEmpty() || '\r' in name || '\n' in name) return null
+
+        val selectedHeading = Regex("^#+[\\t ]+${Regex.escape(config.header)}[\\t ]*$")
+        val heading = Regex("^#+[\\t ]+")
+        val taskLine = Regex("^([\\t ]*)- \\[(?:[0-9]+|[^\\r\\n])] [^\\r\\n]*$")
+        val fence = Regex("^[\\t ]*(`{3,}|~{3,})(.*)$")
+        val wholeNote = config.header.isEmpty()
+        var foundHeading = wholeNote
+        var sectionEnd = text.length
+        var lastTaskEnd: Int? = null
+        var taskIndent: Int? = null
+        var fenceMarker: Char? = null
+        var fenceLength = 0
+
+        for (line in Regex("[^\\n]*(?:\\n|$)").findAll(text)) {
+            if (line.value.isEmpty()) continue
+            val content = line.value.trimEnd('\r', '\n').removePrefix("\uFEFF")
+            val fenceMatch = fence.matchEntire(content)
+            val inCode = fenceMarker != null || fenceMatch != null
+            if (!wholeNote && !inCode) {
+                if (!foundHeading) {
+                    if (selectedHeading.matches(content)) foundHeading = true
+                } else if (heading.containsMatchIn(content)) {
+                    sectionEnd = line.range.first
+                    break
+                } else {
+                    val taskMatch = taskLine.matchEntire(content)
+                    if (taskMatch != null) {
+                        val indent = taskMatch.groupValues[1].length
+                        taskIndent = minOf(taskIndent ?: indent, indent)
+                        lastTaskEnd = line.range.last + 1
+                    }
+                }
+            }
+            if (!wholeNote && foundHeading && taskIndent != null && content.isNotBlank()) {
+                val indent = content.takeWhile { it == ' ' || it == '\t' }.length
+                if (indent > taskIndent) {
+                    lastTaskEnd = line.range.last + 1
+                } else if (inCode || !taskLine.matches(content)) {
+                    taskIndent = null
+                }
+            }
+            if (fenceMatch != null) {
+                val marker = fenceMatch.groupValues[1]
+                if (fenceMarker == null) {
+                    fenceMarker = marker.first()
+                    fenceLength = marker.length
+                } else if (marker.first() == fenceMarker && marker.length >= fenceLength &&
+                    fenceMatch.groupValues[2].isBlank()
+                ) {
+                    fenceMarker = null
+                }
+            }
+        }
+        if (!foundHeading) return null
+        val offset = if (wholeNote) text.length else lastTaskEnd ?: sectionEnd
+        if (offset == text.length && fenceMarker != null) return null
+        val newline = if ("\r\n" in text) "\r\n" else "\n"
+        val before = text.substring(0, offset)
+        val after = text.substring(offset)
+        val separator = if (before.isNotEmpty() && !before.endsWith('\n')) newline else ""
+        val trailing = if (after.isNotEmpty() && !after.startsWith('\r') && !after.startsWith('\n')) {
+            newline
+        } else ""
+        return "$before$separator- [ ] $name$newline$trailing$after"
+    }
+
     // Public function to get the Todolist
     fun getTodosFromFile(): List<TodoItem>{
         val snapshot = FsHelper.readNote(config) ?: return emptyList()

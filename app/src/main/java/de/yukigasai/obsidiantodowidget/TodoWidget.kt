@@ -19,6 +19,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -68,7 +69,8 @@ import kotlinx.coroutines.withContext
 class TodoWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        provideContent { Content() }
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        provideContent { Content(appWidgetId) }
     }
 
     private fun GlanceModifier.appWidgetBackgroundCornerRadius(): GlanceModifier {
@@ -82,7 +84,8 @@ class TodoWidget : GlanceAppWidget() {
     }
 
     @Composable
-    fun Content() {
+    fun Content(appWidgetId: Int) {
+        val context = LocalContext.current
         val preferences = currentState<Preferences>()
         val configJson = preferences[WidgetRefresher.sourceKey] ?: preferences[WidgetRefresher.configKey]
         if (configJson == null) {
@@ -122,6 +125,21 @@ class TodoWidget : GlanceAppWidget() {
                             fontSize = 16.sp,
                             color = GlanceTheme.colors.primary
                         )
+                    )
+                    Image(
+                        provider = ImageProvider(R.drawable.add),
+                        contentDescription = context.getString(R.string.quick_add_title),
+                        modifier = GlanceModifier
+                            .clickable(actionStartActivity(
+                                Intent(context, QuickAddActivity::class.java)
+                                    .setData(Uri.parse("obsidiantodowidget://quick-add/$appWidgetId"))
+                                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                                    .putExtra(QuickAddActivity.EXTRA_CONFIG, preferences[WidgetRefresher.configKey])
+                                    .putExtra(QuickAddActivity.EXTRA_SOURCE, configJson)
+                                    .addFlags(FLAG_ACTIVITY_NEW_TASK)
+                            ))
+                            .padding(8.dp)
+                            .width(24.dp)
                     )
                     Image(
                         provider = ImageProvider(R.drawable.refresh),

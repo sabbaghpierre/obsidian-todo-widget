@@ -3,6 +3,7 @@ package de.yukigasai.obsidiantodowidget.util
 import android.os.Environment
 import android.util.Base64
 import de.yukigasai.obsidiantodowidget.WidgetConfig
+import de.yukigasai.obsidiantodowidget.todo.TodoFactory
 import de.yukigasai.obsidiantodowidget.todo.TodoItem
 import java.io.File
 import java.nio.ByteBuffer
@@ -45,7 +46,6 @@ object FsHelper {
     }
 
     fun updateTask(config: WidgetConfig, item: TodoItem, replacement: String): String? {
-        var temporaryFile: File? = null
         try {
             val file = noteFile(config)
             if (file.path != item.sourcePath || item.sourceRevision == null) return null
@@ -62,21 +62,40 @@ object FsHelper {
 
                 val updated = text.replaceRange(offset, offset + item.state.length, replacement)
                     .toByteArray(Charsets.UTF_8)
-                val staged = File.createTempFile(".${file.name}.", ".tmp", file.parentFile)
-                temporaryFile = staged
-                staged.writeBytes(updated)
-                if (!file.readBytes().contentEquals(original)) return null
-                Files.move(
-                    staged.toPath(), file.toPath(),
-                    StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING
-                )
-                return revision(updated)
+                return writeNote(file, original, updated)
             }
         } catch (error: Exception) {
             WidgetLogger.error("FsHelper.updateTask error: ${error.message}")
             return null
+        }
+    }
+
+    fun appendTask(config: WidgetConfig, task: String): Boolean {
+        return try {
+            val file = noteFile(config)
+            synchronized(fileLocks.computeIfAbsent(file.path) { Any() }) {
+                val original = file.readBytes()
+                val updated = TodoFactory(config).appendTask(decode(original), task) ?: return false
+                writeNote(file, original, updated.toByteArray(Charsets.UTF_8)) != null
+            }
+        } catch (error: Exception) {
+            WidgetLogger.error("FsHelper.appendTask error: ${error.message}")
+            false
+        }
+    }
+
+    private fun writeNote(file: File, original: ByteArray, updated: ByteArray): String? {
+        val staged = File.createTempFile(".${file.name}.", ".tmp", file.parentFile)
+        try {
+            staged.writeBytes(updated)
+            if (!file.readBytes().contentEquals(original)) return null
+            Files.move(
+                staged.toPath(), file.toPath(),
+                StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING
+            )
+            return revision(updated)
         } finally {
-            temporaryFile?.delete()
+            staged.delete()
         }
     }
 }
