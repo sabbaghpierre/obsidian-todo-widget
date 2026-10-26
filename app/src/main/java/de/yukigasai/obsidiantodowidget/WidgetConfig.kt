@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import androidx.core.content.edit
 import com.google.gson.Gson
+import de.yukigasai.obsidiantodowidget.todo.TaskUndo
 import de.yukigasai.obsidiantodowidget.util.PreferencesConstants
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -53,12 +54,14 @@ data class WidgetConfig(
         }
 
         fun delete(context: Context, appWidgetIds: IntArray) {
+            TaskUndo.clear(context, appWidgetIds)
             preferences(context).edit {
                 appWidgetIds.forEach { remove(key(it)) }
             }
         }
 
         fun restore(context: Context, oldIds: IntArray, newIds: IntArray) {
+            TaskUndo.clear(context, oldIds + newIds)
             val preferences = preferences(context)
             val configurations = oldIds.map { preferences.getString(key(it), null) }
             preferences.edit {
@@ -127,6 +130,7 @@ data class WidgetConfig(
     }
 
     fun saveToPrefs(context: Context, appWidgetId: Int) {
+        if (loadFromPrefs(context, appWidgetId) != this) TaskUndo.clear(context, intArrayOf(appWidgetId))
         val gson = Gson()
         val configAsJson = gson.toJson(this)
         preferences(context).edit {

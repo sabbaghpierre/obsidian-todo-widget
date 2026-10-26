@@ -24,6 +24,8 @@
     <string name="quick_add_saving">Saving…</string>
     <string name="quick_add_cancel">Cancel</string>
     <string name="quick_add_failed">Could not add the task. Check file access and that the note, selected heading, and widget settings still exist and have not changed.</string>
+    <string name="undo_completion">Undo completion: %1$s</string>
+    <string name="undo_completion_failed">Could not undo completion. The note or widget changed, or file access is unavailable.</string>
 
 <!--    Configuration Text-->
     <string name="config_header">Configure your widget</string>

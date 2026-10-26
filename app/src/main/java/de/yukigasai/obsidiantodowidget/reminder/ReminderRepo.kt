@@ -7,6 +7,7 @@ import android.content.Context
 import androidx.core.content.edit
 import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.WidgetConfig
+import de.yukigasai.obsidiantodowidget.todo.TaskUndo
 import de.yukigasai.obsidiantodowidget.todo.TodoItem
 import de.yukigasai.obsidiantodowidget.todo.TodoRepo
 import de.yukigasai.obsidiantodowidget.todo.WidgetSnapshot
@@ -158,7 +159,7 @@ class ReminderRepo private constructor() {
         if (id !in state.validated || !reminder.delivered ||
             todo.copy(id = reminder.todo.id) != reminder.todo
         ) return false
-        if (todo.updateInFile(reminder.config, checked = true) == null) return false
+        if (!TaskUndo.completeReminder(context, reminder.config, todo)) return false
         save(context, (state.reminders - id).values)
         cancelAlarm(context, id)
         (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)

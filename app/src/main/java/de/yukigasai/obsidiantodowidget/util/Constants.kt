@@ -17,12 +17,14 @@ object ChannelConstants {
 
 object KeysConstants {
     const val TOGGLE_ITEM_KEY = "ToggledItemKey"
+    const val UNDO_TOKEN_KEY = "UndoTokenKey"
 }
 
 object PreferencesConstants {
     const val PREFIX = "todoWidget"
     const val WIDGET_CONFIG = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_CONFIG"
     const val WIDGET_REMINDERS = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_REMINDERS"
+    const val WIDGET_UNDO = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_UNDO"
 
     const val OWN_COUNTER = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_DEBUG_OWN_COUNTER"
     const val REAL_COUNTER = "de.yukigasai.obsidiantodowidget.PREFERENCES_WIDGET_DEBUG_REAL_COUNTER"

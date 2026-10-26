@@ -70,17 +70,18 @@ object FsHelper {
         }
     }
 
-    fun appendTask(config: WidgetConfig, task: String): Boolean {
+    fun appendTask(config: WidgetConfig, task: String): NoteSnapshot? {
         return try {
             val file = noteFile(config)
             synchronized(fileLocks.computeIfAbsent(file.path) { Any() }) {
                 val original = file.readBytes()
-                val updated = TodoFactory(config).appendTask(decode(original), task) ?: return false
-                writeNote(file, original, updated.toByteArray(Charsets.UTF_8)) != null
+                val updated = TodoFactory(config).appendTask(decode(original), task) ?: return null
+                val revision = writeNote(file, original, updated.toByteArray(Charsets.UTF_8)) ?: return null
+                NoteSnapshot(file.path, updated, revision)
             }
         } catch (error: Exception) {
             WidgetLogger.error("FsHelper.appendTask error: ${error.message}")
-            false
+            null
         }
     }
 

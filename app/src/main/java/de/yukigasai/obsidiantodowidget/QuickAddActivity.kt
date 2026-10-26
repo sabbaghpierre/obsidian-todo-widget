@@ -31,8 +31,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import de.yukigasai.obsidiantodowidget.todo.TaskUndo
 import de.yukigasai.obsidiantodowidget.ui.theme.ObsidianTodoWidgetTheme
-import de.yukigasai.obsidiantodowidget.util.FsHelper
 import de.yukigasai.obsidiantodowidget.util.WidgetLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -136,9 +136,7 @@ class QuickAddViewModel : ViewModel() {
         failed = false
         viewModelScope.launch {
             val success = withContext(Dispatchers.IO) {
-                widgetId in WidgetConfig.getWidgetIds(context) &&
-                    WidgetConfig.loadFromPrefs(context, widgetId) == config &&
-                    FsHelper.appendTask(source, text)
+                TaskUndo.append(context, widgetId, config, source, text)
             }
             saved = success
             failed = !success

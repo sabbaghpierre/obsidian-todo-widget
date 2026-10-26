@@ -56,6 +56,8 @@ import androidx.glance.text.TextStyle
 import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.reminder.ReminderEndReceiver
 import de.yukigasai.obsidiantodowidget.reminder.ReminderStartReceiver
+import de.yukigasai.obsidiantodowidget.todo.CompletionUndo
+import de.yukigasai.obsidiantodowidget.todo.TaskUndo
 import de.yukigasai.obsidiantodowidget.todo.TodoItem
 import de.yukigasai.obsidiantodowidget.util.ActionsConstants
 import de.yukigasai.obsidiantodowidget.util.KeysConstants
@@ -95,6 +97,7 @@ class TodoWidget : GlanceAppWidget() {
         val gson = Gson()
         val config = gson.fromJson(configJson, WidgetConfig::class.java) ?: WidgetConfig()
         val todos = gson.fromJson(preferences[WidgetRefresher.todosKey], Array<TodoItem>::class.java)?.toList().orEmpty()
+        val undo = gson.fromJson(preferences[WidgetRefresher.undoKey], CompletionUndo::class.java)
 
         GlanceTheme {
             Column(
@@ -148,6 +151,18 @@ class TodoWidget : GlanceAppWidget() {
                             .clickable(actionRunCallback<RefreshButtonHandler>())
                             .padding(0.dp)
                             .width(24.dp)
+                    )
+                }
+                if (undo != null) {
+                    Text(
+                        text = context.getString(R.string.undo_completion, undo.item.getTodoText()),
+                        modifier = GlanceModifier
+                            .clickable(actionRunCallback<UndoCompletionAction>(
+                                actionParametersOf(undoTokenKey to undo.token)
+                            ))
+                            .padding(8.dp),
+                        style = TextStyle(color = GlanceTheme.colors.primary),
+                        maxLines = 1
                     )
                 }
                 if (todos.isEmpty()) {
@@ -238,6 +253,7 @@ private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
 }
 
 private val toggledItemKey = ActionParameters.Key<String>(KeysConstants.TOGGLE_ITEM_KEY)
+private val undoTokenKey = ActionParameters.Key<String>(KeysConstants.UNDO_TOKEN_KEY)
 
 class CheckboxClickAction : ActionCallback {
     override suspend fun onAction(
@@ -256,18 +272,37 @@ class CheckboxClickAction : ActionCallback {
             Gson().fromJson(it, TodoItem::class.java)
         }
         val displayedConfig = Gson().fromJson(state[WidgetRefresher.configKey], WidgetConfig::class.java)
-        if (toggledItem == null || displayedConfig != config) {
+        val source = Gson().fromJson(
+            state[WidgetRefresher.sourceKey] ?: state[WidgetRefresher.configKey], WidgetConfig::class.java
+        )
+        if (toggledItem == null || displayedConfig != config || source == null) {
             WidgetRefresher.refresh(context)
             return
         }
 
-        val updated = withContext(Dispatchers.IO) { toggledItem.updateInFile(config, checked) }
+        val updated = withContext(Dispatchers.IO) {
+            TaskUndo.update(context, appWidgetId, config, source, toggledItem, checked)
+        }
         if (updated == null) {
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, R.string.task_edit_failed, Toast.LENGTH_LONG).show()
             }
         }
 
+        WidgetRefresher.refresh(context)
+    }
+}
+
+class UndoCompletionAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val token = parameters[undoTokenKey] ?: return
+        val widgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        val undone = withContext(Dispatchers.IO) { TaskUndo.undo(context, widgetId, token) }
+        if (!undone) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, R.string.undo_completion_failed, Toast.LENGTH_LONG).show()
+            }
+        }
         WidgetRefresher.refresh(context)
     }
 }
