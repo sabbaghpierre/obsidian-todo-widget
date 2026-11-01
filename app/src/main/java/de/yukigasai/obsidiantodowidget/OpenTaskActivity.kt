@@ -60,7 +60,9 @@ class OpenTaskActivity : ComponentActivity() {
         } ?: return null
         val block = Regex("\\s\\^([A-Za-z0-9-]+)\\s*$").find(current.name)?.groupValues?.get(1)
         if (block != null) return source.getFullObsidianURL("^$block")
-        val line = snapshot.text.take(current.stateOffset).count { it == '\n' } + 1
-        return source.getTaskObsidianURL(line)
+        val lineEnd = snapshot.text.indexOf('\n', current.stateOffset)
+            .takeIf { it >= 0 } ?: snapshot.text.length
+        val offset = snapshot.text.take(lineEnd).trimEnd('\r').replace("\r\n", "\n").length
+        return source.getTaskObsidianURL(offset)
     }
 }

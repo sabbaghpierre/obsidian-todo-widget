@@ -125,13 +125,12 @@ data class WidgetConfig(
             .build().toString()
     }
 
-    fun getTaskObsidianURL(line: Int): String = Uri.Builder()
+    fun getTaskObsidianURL(offset: Int): String = Uri.Builder()
         .scheme("obsidian")
         .authority("advanced-uri")
         .appendQueryParameter("vault", vaultName)
         .appendQueryParameter("filepath", getObsidianPath())
-        .appendQueryParameter("line", line.toString())
-        .appendQueryParameter("column", "1")
+        .appendQueryParameter("offset", offset.toString())
         .build().toString()
 
     fun resolved(today: LocalDateTime = LocalDateTime.now()): WidgetConfig {
