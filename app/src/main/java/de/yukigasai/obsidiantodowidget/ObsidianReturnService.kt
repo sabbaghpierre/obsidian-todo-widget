@@ -45,7 +45,7 @@ class ObsidianReturnService : AccessibilityService() {
             armed = true
             return
         }
-        if (!armed && refreshJob?.isActive != true) return
+        if (!armed) return
 
         val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val homeActivity = packageManager.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
@@ -65,9 +65,6 @@ class ObsidianReturnService : AccessibilityService() {
                     refreshOnce("obsidian_follow_up")
                 }
             }
-        } else {
-            armed = false
-            cancelRefresh()
         }
     }
 

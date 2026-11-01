@@ -1,5 +1,6 @@
 package de.yukigasai.obsidiantodowidget
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -185,7 +186,7 @@ class TodoWidget : GlanceAppWidget() {
                     LazyColumn {
                         items(todos, itemId = { it.widgetItemId() }) { todoItem ->
                             if(!todoItem.isChecked || !config.hideDoneTasks) {
-                                CheckBoxItem(todoItem, config)
+                                CheckBoxItem(todoItem, config, appWidgetId)
                             }
                         }
                     }
@@ -196,7 +197,7 @@ class TodoWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
+private fun CheckBoxItem(item: TodoItem, config: WidgetConfig, appWidgetId: Int) {
     val context = LocalContext.current
     val preferences = currentState<Preferences>()
     val label = item.getTodoText()
@@ -237,8 +238,10 @@ private fun CheckBoxItem(item: TodoItem, config: WidgetConfig) {
             style = TextStyle(fontSize = 15.sp, color = GlanceTheme.colors.onBackground),
             modifier = GlanceModifier.defaultWeight()
                 .clickable(actionStartActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse(config.getFullObsidianURL(item.sourceHeading)))
-                        .setPackage("md.obsidian")
+                    Intent(context, OpenTaskActivity::class.java)
+                        .setData(Uri.parse("obsidiantodowidget://open-task/$appWidgetId/${item.widgetItemId()}"))
+                        .putExtra(OpenTaskActivity.EXTRA_SOURCE, Gson().toJson(config))
+                        .putExtra(OpenTaskActivity.EXTRA_TASK, Gson().toJson(item))
                         .addFlags(FLAG_ACTIVITY_NEW_TASK)
                 ))
                 .padding(top = 12.dp, bottom = 12.dp)
@@ -349,7 +352,9 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
                 ReminderEndReceiver.onReceive(appContext, intent)
                 WidgetRefresher.refresh(appContext)
             }
-            ActionsConstants.UPDATE_WIDGET -> WidgetRefreshWorker.enqueue(appContext)
+            ActionsConstants.UPDATE_WIDGET -> launchAsync {
+                WidgetRefresher.refresh(appContext)
+            }
             else -> super.onReceive(context, intent)
         }
     }
@@ -377,15 +382,34 @@ class TodoWidgetReceiver : GlanceAppWidgetReceiver() {
         OnScreenReceiver.updateRegistration(context)
     }
 
+    @SuppressLint("MissingSuperCall")
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
-
         OnScreenReceiver.updateRegistration(context)
-        WidgetRefreshWorker.enqueue(context)
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) {
+            // Keep managed Glance sessions from overwriting directly published views.
+            launchAsync { WidgetRefresher.refresh(context.applicationContext) }
+        } else {
+            super.onUpdate(context, appWidgetManager, appWidgetIds)
+            WidgetRefreshWorker.enqueue(context)
+        }
+    }
+
+    @SuppressLint("MissingSuperCall")
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) {
+            launchAsync { WidgetRefresher.refresh(context.applicationContext) }
+        } else {
+            super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        }
     }
 
 }

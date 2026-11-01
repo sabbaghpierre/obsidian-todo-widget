@@ -39,6 +39,13 @@
         </service>
 
         <activity
+            android:name=".OpenTaskActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
             android:name=".QuickAddActivity"
             android:exported="false"
             android:excludeFromRecents="true"

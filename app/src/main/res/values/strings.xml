@@ -28,6 +28,8 @@
     <string name="undo_completion_failed">Could not undo completion. The note or widget changed, or file access is unavailable.</string>
     <string name="task_completion_control">Change completion: %1$s</string>
     <string name="task_state_control">Update task state: %1$s</string>
+    <string name="task_navigation_description">To focus a task when tapping its text, install and enable the Advanced URI community plugin in your Obsidian vault. Tasks with block IDs open directly without the plugin.</string>
+    <string name="obsidian_not_installed">Obsidian is not installed or could not be opened.</string>
 
 <!--    Configuration Text-->
     <string name="config_header">Configure your widget</string>

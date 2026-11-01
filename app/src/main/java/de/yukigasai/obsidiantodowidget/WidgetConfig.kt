@@ -111,8 +111,11 @@ data class WidgetConfig(
         return "${getFolderPath()}${getArticleFileName()}"
     }
 
+    private fun getObsidianPath(): String =
+        getFullPath().substringAfter("/$vaultName/").trimStart('/')
+
     fun getFullObsidianURL(heading: String? = null): String {
-        val internalPath = getFullPath().substringAfter("/$vaultName/").trimStart('/')
+        val internalPath = getObsidianPath()
         val file = if (heading.isNullOrBlank()) internalPath else "$internalPath#$heading"
         return Uri.Builder()
             .scheme("obsidian")
@@ -121,6 +124,15 @@ data class WidgetConfig(
             .appendQueryParameter("file", file)
             .build().toString()
     }
+
+    fun getTaskObsidianURL(line: Int): String = Uri.Builder()
+        .scheme("obsidian")
+        .authority("advanced-uri")
+        .appendQueryParameter("vault", vaultName)
+        .appendQueryParameter("filepath", getObsidianPath())
+        .appendQueryParameter("line", line.toString())
+        .appendQueryParameter("column", "1")
+        .build().toString()
 
     fun resolved(today: LocalDateTime = LocalDateTime.now()): WidgetConfig {
         return copy(folder = folder.checkForPatterns(today), fileName = fileName.checkForPatterns(today))

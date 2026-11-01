@@ -206,6 +206,7 @@ class MainActivity : ComponentActivity() {
             Button(onClick = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }) {
                 Text(stringResource(R.string.accessibility_settings_open))
             }
+            Text(stringResource(R.string.task_navigation_description))
         }
     }
 }

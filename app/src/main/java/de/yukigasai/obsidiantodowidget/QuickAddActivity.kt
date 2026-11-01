@@ -2,6 +2,7 @@ package de.yukigasai.obsidiantodowidget
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -33,6 +34,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import de.yukigasai.obsidiantodowidget.todo.TaskUndo
 import de.yukigasai.obsidiantodowidget.ui.theme.ObsidianTodoWidgetTheme
+import de.yukigasai.obsidiantodowidget.util.ActionsConstants
 import de.yukigasai.obsidiantodowidget.util.WidgetLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -143,7 +145,10 @@ class QuickAddViewModel : ViewModel() {
             saving = false
             if (success) {
                 try {
-                    WidgetRefreshWorker.enqueue(context)
+                    context.sendBroadcast(
+                        Intent(context, TodoWidgetReceiver::class.java)
+                            .setAction(ActionsConstants.UPDATE_WIDGET)
+                    )
                 } catch (error: Exception) {
                     WidgetLogger.error("Quick-add refresh scheduling failed: ${error.message}")
                 }
